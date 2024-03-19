@@ -13,35 +13,25 @@ from statistics import mean
 #per ora va il parsing e crea le tabelle sql relative alle dimensioni, inizializza C1/E1 (nodi e archi di un solo qi)
 #continuare incognito
 
-def prepareTableForKAnonymization(dataset):
+def prepare_table_for_k_anonymization(dataset, dataset_name):
     with open(dataset, "r") as dataset_table:
-        table_name = path.basename(dataset).split(".")[0]
-        print("Working on dataset " + table_name)
+
+        print(f"Working on dataset {dataset_name}")
 
         # first line contains attribute names
-        attribute_names = dataset_table.readline().split(",")
-        for attr in attribute_names:
-            table_attribute = attr.strip() + " TEXT"  #per dare il tipo di dato al campo sql 
-            #attributes.append(table_attribute.replace("-", "_"))
-            attributes.append(table_attribute)
-        cursor.execute("CREATE TABLE IF NOT EXISTS " + table_name + "(" + ','.join(attributes) + ")")  #creo la tabella
-        print("Attributes found: " + str([attr.strip() for attr in attribute_names]))
-        # insert records into the SQL table
-        for line in dataset_table: #itero le linee
-            values = line.split(",")
-            new_values = list()
-            for value in values: #itero i valori di una linea
-                value = value.strip()
-                if value.__contains__("-"):
-                    value = value.replace("-", "_")
-                new_values.append(value)
+        attribute_names = [attr.strip() + " TEXT" for attr in dataset_table.readline().split(",")]
+        cursor.execute(f"CREATE TABLE IF NOT EXISTS {dataset_name} ({','.join(attribute_names)})")  # create the table
+        print(f"Attributes found: {[attr.strip() for attr in attribute_names]}")
 
-            # a line could be a "\n" => new_values ===== [''] => len(new_values) == 1
-            if len(new_values) == 1:
-                continue #ignoro "\n"
-            cursor.execute("INSERT INTO " + table_name + ' values ({})'.format(new_values)  #inserisco i valori new values, elimino []
-                           .replace("[", "").replace("]", ""))
-            connection.commit()
+        # insert records into the SQL table
+        for line in dataset_table:  # iterate over lines
+            values = [value.strip().replace("-", "_") for value in line.split(",")]
+
+            # a line could be a "\n" => values == [''] => len(values) == 1
+            if len(values) > 1:
+                placeholders = ', '.join('?' for _ in values)
+                cursor.execute(f"INSERT INTO {dataset_name} VALUES ({placeholders})", tuple(values))  # insert the values
+                connection.commit()
 
 #IMPORTANT each columns of the csv file rappresent different level of generalization
 #the first line of the file is made with values that rappresent leves of the tree
@@ -71,33 +61,26 @@ def get_dimension_tables(all_csv):
      
 
 def create_sql_dimension_tables(tables):
-    for qi in tables:
+    for qi, table in tables.items():
         # create SQL table
-        columns = list()
-        for i in tables[qi]:
-            columns.append("'" + i + "' TEXT")#first line, append TEXT for each value
-        cursor.execute("CREATE TABLE IF NOT EXISTS " + qi + "_dim (" + ", ".join(columns) + ")")
+        columns = ["'{}' TEXT".format(i) for i in table]
+        cursor.execute("CREATE TABLE IF NOT EXISTS {}_dim ({})".format(qi, ", ".join(columns)))
 
         # insert values into the newly created table
-        rows = list()
-        for i in range(len(tables[qi]["1"])):
-            row = "("
-            for j in tables[qi]:
-                row += "'" + str(tables[qi][j][i]) + "', "
-            row = row[:-2] + ")"
-            rows.append(row)
-        cursor.execute("INSERT INTO " + qi + "_dim VALUES " + ", ".join(rows))
+        for i in range(len(table["1"])):
+            row = ", ".join("'{}'".format(str(table[j][i])) for j in table)
+            cursor.execute("INSERT INTO {}_dim VALUES ({})".format(qi, row))
         connection.commit()
 
 
-def tabella_esiste(nome_tabella):
+def table_exists(nome_tabella):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (nome_tabella,))
     return cursor.fetchone() is not None
 
 
 def control(tables):
     for qi in tables:
-        if tabella_esiste(qi + "_dim"):
+        if table_exists(qi + "_dim"):
             print("esiste")
             cursor.execute("SELECT * FROM " + qi + "_dim")
             result = cursor.fetchall()
@@ -119,22 +102,20 @@ def get_parent_index_C1(index, parent1_or_parent2):
     return parent_index
 
 
+def insert_into_C1_and_E1(id, dimension, index, parent1, parent2):
+    cursor.execute("INSERT INTO C1 values (?, ?, ?, ?, ?)", (id, dimension, index, parent1, parent2)) # create node
+    if index >= 1:
+        cursor.execute("INSERT INTO E1 values (?, ?)", (id - 1, id)) # create edges
+
 def init_C1_and_E1():
     print("Generating graph for 1 quasi-identifier ", end="")
     id = 1
-    for dimension in qis_dimension_tables: #per ogni tabella
-        index = 0
-        for i in range(len(qis_dimension_tables[dimension])):  #per ogni livello di generalizzazione di tale tabella
-            # parenty = index - y
-            # parent2 is the parent of parent1
+    for dimension, table in qis_dimension_tables.items(): # for each table
+        for index in range(len(table)):  # for each level of generalization of that table
             parent1 = get_parent_index_C1(index, 1)
             parent2 = get_parent_index_C1(index, 2)
-            tuple = (id, dimension, index, parent1, parent2)
-            cursor.execute("INSERT INTO C1 values (?, ?, ?, ?, ?)", tuple) #creo nodo
-            if index >= 1:
-                cursor.execute("INSERT INTO E1 values (?, ?)", (id - 1, id)) #creo edges
+            insert_into_C1_and_E1(id, dimension, index, parent1, parent2)
             id += 1
-            index += 1
     print("\t OK")
 
 
@@ -206,25 +187,30 @@ if __name__ == "__main__":
     attributes = list()
 
     dataset_path = args.dataset #dataset path
-    prepareTableForKAnonymization(dataset_path) #creo tabella
     dataset_name = path.basename(dataset_path).split(".")[0] #nome tabella
+    prepare_table_for_k_anonymization(dataset_path, dataset_name) #creo tabella
     
+    """
     #test tabella principale
-    """table_name = path.basename(dataset).split(".")[0]
-    cursor.execute("SELECT * FROM " + table_name)
+
+    cursor.execute("SELECT * FROM " + dataset_name)
     result = cursor.fetchall()
     # Stampa il risultato
     print(result)
     #Sprint(attributes)
-    #dataset = path.basename(dataset).split(".")[0]"""
+    #dataset = path.basename(dataset).split(".")[0]
+    """
+    
+    
 
     # get dimension tables
     qis_dimension_tables= get_dimension_tables(args.dimension_tables) #dict con tutti i qi dimensions
     Q = set(qis_dimension_tables.keys())  #gli attributi Quasi-identificatori
-
+    
     # create dimension SQL tables
     create_sql_dimension_tables(qis_dimension_tables)  #tabelle sql delle qi dimensions
-    """ cursor.execute("SELECT * FROM age_dim" )
+    """ test creazione tabelle dimensioni
+    cursor.execute("SELECT * FROM age_dim" )
     result = cursor.fetchall()
     # Stampa il risultato
     print(result)"""
@@ -254,9 +240,9 @@ if __name__ == "__main__":
     basic_incognito_algorithm(queue.PriorityQueue())
 
     connection.close()
-
-    """
-
+    
+    
+    """""
     cursor.execute("SELECT * FROM S" + str(len(Q)))
     Sn = list(cursor)
 
