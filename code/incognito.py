@@ -33,6 +33,7 @@ def prepare_table_for_k_anonymization(dataset, dataset_name):
                 cursor.execute(f"INSERT INTO {dataset_name} VALUES ({placeholders})", tuple(values))  # insert the values
                 connection.commit()
 
+
 #IMPORTANT each columns of the csv file rappresent different level of generalization
 #the first line of the file is made with values that rappresent leves of the tree
 def csv_to_dict(file_path):
@@ -209,6 +210,7 @@ if __name__ == "__main__":
     
     # create dimension SQL tables
     create_sql_dimension_tables(qis_dimension_tables)  #tabelle sql delle qi dimensions
+    
     """ test creazione tabelle dimensioni
     cursor.execute("SELECT * FROM age_dim" )
     result = cursor.fetchall()
