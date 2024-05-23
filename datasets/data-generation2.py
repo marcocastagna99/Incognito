@@ -34,8 +34,8 @@ def generate_data(num_tuples):
 
         # Altezza
         #height = fake.random_int(min=140, max=190)  # Altezza in cm
-        height_mean = 170  # Media del peso in kg
-        height_std_dev = 20  # Deviazione standard del peso in kg
+        height_mean = 170 # Media dell'altezza in cm
+        height_std_dev = 20  # Deviazione standard dell'altezza in cm
         height = int(np.random.normal(height_mean, height_std_dev))
         height = max(140, min(height, 200))
 

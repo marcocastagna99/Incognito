@@ -44,11 +44,11 @@ def csv_to_dict(file_path):
         header = next(csv_reader)  # livelli di generalizzazione
         file_dict = {key: [] for key in header} #la prima riga contiene le chiavi (0,1 etc)
         for row in csv_reader:  #itero ogni riga
-            for col_index, col_value in enumerate(row):  #per ogni colonna di tale riga
-                file_dict[header[col_index]].append(col_value) #metto il valore rispettiva lista
+            for col_index, col_value in enumerate(row):  # per ogni colonna di tale riga col_index è l'indice della colonna, col_value è il valore
+                file_dict[header[col_index]].append(col_value) #metto il valore alla rispettiva lista
 
 
-        # Aggiungi il sotto-dizionario al risultato usando il nome del file come chiave principale
+        # Aggiungo il sotto-dizionario al risultato usando il nome del file come chiave principale
         result_dict[table_name] = file_dict
 
     return result_dict
@@ -123,7 +123,9 @@ def init_C1_and_E1():
 def basic_incognito_algorithm(priority_queue):
     init_C1_and_E1()
     queue = priority_queue
-    """cursor.execute("SELECT C1.* FROM C1, E1 WHERE C1.ID = E1.start EXCEPT SELECT C1.* FROM C1, E1 WHERE C1.ID = E1.end" )  #quelli a cui non appaiono i propri id nel campo Ei.end, ovvero non hanno archi entranti, ovvero sono root
+    """
+    test
+    cursor.execute("SELECT C1.* FROM C1, E1 WHERE C1.ID = E1.start EXCEPT SELECT C1.* FROM C1, E1 WHERE C1.ID = E1.end" )  #quelli a cui non appaiono i propri id nel campo Ei.end, ovvero non hanno archi entranti, ovvero sono root
     result = cursor.fetchall()
     print(result) """
     
@@ -135,7 +137,7 @@ def basic_incognito_algorithm(priority_queue):
         # no edge directed to a node => root
         cursor.execute("SELECT C" + i_str + ".* FROM C" + i_str + ", E" + i_str + " WHERE C" + i_str + ".ID = E" +
                        i_str + ".start EXCEPT SELECT C" + i_str + ".* FROM C" + i_str + ", E" + i_str + " WHERE C" +
-                       i_str + ".ID = E" + i_str + ".end ")
+                       i_str + ".ID = E" + i_str + ".end ") #quelli a cui non appaiono i propri id nel campo Ei.end, ovvero non hanno archi entranti, ovvero sono root
         roots = set(cursor)
         roots_in_queue = set()
 
@@ -202,21 +204,19 @@ if __name__ == "__main__":
     #dataset = path.basename(dataset).split(".")[0]
     """
     
-    
-
     # get dimension tables
     qis_dimension_tables= get_dimension_tables(args.dimension_tables) #dict con tutti i qi dimensions
     Q = set(qis_dimension_tables.keys())  #gli attributi Quasi-identificatori
+
     
     # create dimension SQL tables
     create_sql_dimension_tables(qis_dimension_tables)  #tabelle sql delle qi dimensions
     
-    """ test creazione tabelle dimensioni
-    cursor.execute("SELECT * FROM age_dim" )
-    result = cursor.fetchall()
-    # Stampa il risultato
-    print(result)"""
-
+    #test creazione tabelle dimensioni
+    """ cursor.execute("SELECT * FROM zipCode_dim" )
+        result = cursor.fetchall()
+        # Stampa il risultato
+        print(result) """
 
     k = args.k
     cursor.execute("SELECT * FROM " + str(dataset_name))

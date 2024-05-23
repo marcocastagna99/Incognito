@@ -24,7 +24,7 @@ def execute(k, execution_times):
         print("Starting with " + i_str + " QIs and k= " + k_str + " ...")
         start = datetime.timestamp(datetime.now())
         #os.system("python3 main.py -d ../datasets/adults.csv -D dimension_tables_" + i_str + "qi.json -k " + k_str)
-        os.system("python incognito.py -d ../datasets/hospital.csv -D "+dimTables_path(dimensionsTable, i)+ "-k " + k_str)
+        os.system("python3 incognito.py -d ../datasets/hospital.csv -D "+dimTables_path(dimensionsTable, i)+ "-k " + k_str)
         #print(dimTables_path(dimensionsTable, i))
         stop = datetime.timestamp(datetime.now())
         execution_time = stop - start
@@ -43,11 +43,11 @@ def plot_with_k(k):
         plt.ylabel("Time [s]")
         plt.title("Execution Time with k=" + str(k))
         plt.grid()
-        plt.show()
+        plt.savefig('results.png')
 
 
 if __name__ == "__main__":
-    dimensionsTable = ['patientId.csv','dateandTime.csv','gender.csv', 'age.csv', 'zip.csv','height.csv', 'weight.csv']
+    dimensionsTable = ['patientId.csv','dateandTime.csv','gender.csv', 'age.csv', 'zipCode.csv','height.csv', 'weight.csv']
     QIs = range(2, 8)
     #QIs = range(2, 3)
     plot_with_k(2)

@@ -46,8 +46,8 @@ def generalize_numeric_field_digits(data, field_name):
 
 patientIdGen=generalize_numeric_field_digits(data,"PatientID")
 patientIdGen=patientIdGen[::-1]
-zipGen=generalize_numeric_field_digits(data,"ZIPCode")
-zipGen=zipGen[::-1]
+""" zipGen=generalize_numeric_field_digits(data,"ZIPCode")
+zipGen=zipGen[::-1] """
 #date time to do
 #genderGeneralization = [['Person'],['F', 'M']]
 #ageGeneralization = [['*'],["18-39","40-60","61-80","81-100","101-120"],["18-30","31-40","41-50","51-60","61-70","71-80","81-90","91-100"],["18-23","24-30","31-35","36-40","41-45","46-50","51-60","61-65","66-70", "71-75","76-80","81-85","86-90","91-100","101-106","106-110"]]
@@ -74,7 +74,7 @@ with open(percorso_file_csv, 'w', newline='') as file_csv:
         scrittore.writerow(colonna)
 
 
-percorso_file_csv = 'zip.csv'
+""" percorso_file_csv = 'zip.csv'
 
 # Apri il file CSV in modalità scrittura
 with open(percorso_file_csv, 'w', newline='') as file_csv:
@@ -86,7 +86,7 @@ with open(percorso_file_csv, 'w', newline='') as file_csv:
     # Itera attraverso gli elementi e scrivi su colonne
     for colonna in zip(*zipGen):
         scrittore.writerow(colonna)
-
+ """
 
 
 
