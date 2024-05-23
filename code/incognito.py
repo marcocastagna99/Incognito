@@ -16,12 +16,12 @@ from statistics import mean
 def prepare_table_for_k_anonymization(dataset, dataset_name):
     with open(dataset, "r") as dataset_table:
 
-        print(f"Working on dataset {dataset_name}")
+       # print(f"Working on dataset {dataset_name}")
 
         # first line contains attribute names
         attribute_names = [attr.strip() + " TEXT" for attr in dataset_table.readline().split(",")]
         cursor.execute(f"CREATE TABLE IF NOT EXISTS {dataset_name} ({','.join(attribute_names)})")  # create the table
-        print(f"Attributes found: {[attr.strip() for attr in attribute_names]}")
+       # print(f"Attributes found: {[attr.strip() for attr in attribute_names]}")
 
         # insert records into the SQL table
         for line in dataset_table:  # iterate over lines
@@ -213,10 +213,10 @@ if __name__ == "__main__":
     create_sql_dimension_tables(qis_dimension_tables)  #tabelle sql delle qi dimensions
     
     #test creazione tabelle dimensioni
-    """ cursor.execute("SELECT * FROM zipCode_dim" )
-        result = cursor.fetchall()
-        # Stampa il risultato
-        print(result) """
+    """cursor.execute("SELECT * FROM zipCode_dim" )
+    result = cursor.fetchall()
+    # Stampa il risultato
+    print(result)"""
 
     k = args.k
     cursor.execute("SELECT * FROM " + str(dataset_name))
