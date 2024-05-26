@@ -78,7 +78,7 @@ def table_exists(nome_tabella):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (nome_tabella,))
     return cursor.fetchone() is not None
 
-
+#debug sql tables
 def control(tables):
     for qi in tables:
         if table_exists(qi + "_dim"):
@@ -109,7 +109,7 @@ def insert_into_C1_and_E1(id, dimension, index, parent1, parent2):
         cursor.execute("INSERT INTO E1 values (?, ?)", (id - 1, id)) # create edges
 
 def init_C1_and_E1():
-    print("Generating graph for 1 quasi-identifier ", end="")
+    #print("Generating graph for 1 quasi-identifier ", end="")
     id = 1
     for dimension, table in qis_dimension_tables.items(): # for each table
         for index in range(len(table)):  # for each level of generalization of that table
@@ -120,42 +120,90 @@ def init_C1_and_E1():
     print("\t OK")
 
 
+def get_height_of_node(node):
+    # sum of the indexes in a row (node)
+    indices = [2] + [6 + 2 * (i - 1) for i in range(1, (len(node) - 6) // 2 + 1)]
+    height = sum([int(node[i]) for i in indices if i < len(node) and node[i] != 'null'])
+    return height
+
+
+
+
+def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
+        print("frequency_set_of_T_wrt_attributes_of_node_using_T")
+        """
+        attributes = get_dimensions_of_node(node)
+        try:
+            attributes.remove("null")
+        except:
+            pass
+        dims_and_indexes_s_node = get_dims_and_indexes_of_node(node)
+        group_by_attributes = set(attributes)
+        dimension_table_names = list()
+        where_items = list()
+        for i in range(len(dims_and_indexes_s_node)):
+            if dims_and_indexes_s_node[i][0] == "null" or dims_and_indexes_s_node[i][1] == "null":
+                continue
+            column_name, dimension_table, dimension_with_previous_generalization_level, generalization_level_str = \
+                prepare_query_parameters(attributes, dims_and_indexes_s_node, group_by_attributes, i)
+
+            where_item = "" + dataset + "." + column_name + " = " + dimension_with_previous_generalization_level
+
+            dimension_table_names.append(dimension_table)
+            where_items.append(where_item)
+
+        cursor.execute("SELECT COUNT(*) FROM " + dataset + ", " + ', '.join(dimension_table_names) +
+                    " WHERE " + 'and '.join(where_items) + " GROUP BY " + ', '.join(group_by_attributes))
+        freq_set = list()
+        for count in list(cursor):
+            freq_set.append(count[0])
+        return freq_set"""
+
+
 def basic_incognito_algorithm(priority_queue):
     init_C1_and_E1()
     queue = priority_queue
+    marked_nodes = set()
+
     """
-    test
+    #test
     cursor.execute("SELECT C1.* FROM C1, E1 WHERE C1.ID = E1.start EXCEPT SELECT C1.* FROM C1, E1 WHERE C1.ID = E1.end" )  #quelli a cui non appaiono i propri id nel campo Ei.end, ovvero non hanno archi entranti, ovvero sono root
     result = cursor.fetchall()
-    print(result) """
+    print(result)"""
     
-    """for i in range(1, len(Q) + 1):
+    
+    for i in range(1, len(Q) + 1):
         i_str = str(i)
         cursor.execute("SELECT * FROM C" + i_str + "")
-        Si = set(cursor) 
+        Si = set(cursor) #Si = set of nodes of Ci
 
         # no edge directed to a node => root
         cursor.execute("SELECT C" + i_str + ".* FROM C" + i_str + ", E" + i_str + " WHERE C" + i_str + ".ID = E" +
                        i_str + ".start EXCEPT SELECT C" + i_str + ".* FROM C" + i_str + ", E" + i_str + " WHERE C" +
                        i_str + ".ID = E" + i_str + ".end ") #quelli a cui non appaiono i propri id nel campo Ei.end, ovvero non hanno archi entranti, ovvero sono root
         roots = set(cursor)
+        #coda delle root
         roots_in_queue = set()
-
+        #ordino by heightt
         for node in roots:
             height = get_height_of_node(node)
             # -height because priority queue shows the lowest first. Syntax: (priority number, data)
             roots_in_queue.add((-height, node))
-
+        #aggiungo alla coda
         for upgraded_node in roots_in_queue:
             queue.put_nowait(upgraded_node)
 
+
+        
         while not queue.empty():
             upgraded_node = queue.get_nowait()
+            print(upgraded_node)
             # [1] => pick 'node' in (-height, node),
             node = upgraded_node[1]
             if node[0] not in marked_nodes:
                 if node in roots:
                     frequency_set = frequency_set_of_T_wrt_attributes_of_node_using_T(node)
+                """
                 else:
                     frequency_set = frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i)
                 if table_is_k_anonymous_wrt_attributes_of_node(frequency_set):
@@ -167,6 +215,8 @@ def basic_incognito_algorithm(priority_queue):
 
         graph_generation(Si, i)
         marked_nodes = set()"""
+                
+    
 
 if __name__ == "__main__":
 
@@ -207,13 +257,14 @@ if __name__ == "__main__":
     # get dimension tables
     qis_dimension_tables= get_dimension_tables(args.dimension_tables) #dict con tutti i qi dimensions
     Q = set(qis_dimension_tables.keys())  #gli attributi Quasi-identificatori
+    #print(qis_dimension_tables)
 
     
     # create dimension SQL tables
     create_sql_dimension_tables(qis_dimension_tables)  #tabelle sql delle qi dimensions
     
-    #test creazione tabelle dimensioni
-    """cursor.execute("SELECT * FROM zipCode_dim" )
+    """#test creazione tabelle dimensioni
+    cursor.execute("SELECT * FROM patientId_dim")
     result = cursor.fetchall()
     # Stampa il risultato
     print(result)"""
