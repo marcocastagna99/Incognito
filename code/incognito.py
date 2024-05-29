@@ -11,17 +11,17 @@ from statistics import mean
 #tutto cio che non è commentato funziona
 #devo continuare dalla parte commentata    progress: 48%
 #per ora va il parsing e crea le tabelle sql relative alle dimensioni, inizializza C1/E1 (nodi e archi di un solo qi)
-#continuare incognito
+#continuare incognito, capire il graph generation e fare il test finale
 
 def prepare_table_for_k_anonymization(dataset, dataset_name):
     with open(dataset, "r") as dataset_table:
 
-       # print(f"Working on dataset {dataset_name}")
+        print(f"Working on dataset {dataset_name}")
 
         # first line contains attribute names
         attribute_names = [attr.strip() + " TEXT" for attr in dataset_table.readline().split(",")]
         cursor.execute(f"CREATE TABLE IF NOT EXISTS {dataset_name} ({','.join(attribute_names)})")  # create the table
-       # print(f"Attributes found: {[attr.strip() for attr in attribute_names]}")
+        print(f"Attributes found: {[attr.strip() for attr in attribute_names]}")
 
         # insert records into the SQL table
         for line in dataset_table:  # iterate over lines
@@ -109,7 +109,7 @@ def insert_into_C1_and_E1(id, dimension, index, parent1, parent2):
         cursor.execute("INSERT INTO E1 values (?, ?)", (id - 1, id)) # create edges
 
 def init_C1_and_E1():
-    #print("Generating graph for 1 quasi-identifier ", end="")
+    print("Generating graph for 1 quasi-identifier ", end="")
     id = 1
     for dimension, table in qis_dimension_tables.items(): # for each table
         for index in range(len(table)):  # for each level of generalization of that table
@@ -122,16 +122,60 @@ def init_C1_and_E1():
 
 def get_height_of_node(node):
     # sum of the indexes in a row (node)
-    indices = [2] + [6 + 2 * (i - 1) for i in range(1, (len(node) - 6) // 2 + 1)]
-    height = sum([int(node[i]) for i in indices if i < len(node) and node[i] != 'null'])
+    indices = [2] + [6 + 2 * (i - 1) for i in range(1, (len(node) - 6) // 2 + 1)]#indice 2 è l'indice della prima dimensione
+    height = sum([int(node[i]) for i in indices if i < len(node) and node[i] != 'null'])#sommo gli indici delle dimensioni
     return height
 
 
+def get_dimensions_of_node(node):
+    dimensions_temp = set()
+    i = 0
+    length = len(node)
+    while True:
+        # 1, 5, 7, 9, ...
+        if i == 0:
+            j = 1
+        else:
+            j = 5 + 2*(i-1)
+        if j >= length:
+            break
+        if node[j] != 'null':
+            dimensions_temp.add(node[j])
+        i += 1
+    return dimensions_temp
+
+def get_dims_and_indexes_of_node(node):
+    list_temp = list()
+    i = 0
+    length = len(node)
+    while True:
+        # dims = 1, 5, 7, ...
+        # indexes = 2, 6, 8, ... = dims + 1
+        if i == 0:
+            j = 1
+        else:
+            j = 5 + 2*(i-1)
+        if j >= length or j+1 >= length:
+            break
+        list_temp.append((node[j], node[j+1]))
+        i += 1
+    return list_temp
+
+def prepare_query_parameters(attributes, dims_and_indexes_s_node, group_by_attributes, i):
+    column_name = dims_and_indexes_s_node[i][0]#nome colonna
+    generalization_level = dims_and_indexes_s_node[i][1]#livello di generalizzazione
+    generalization_level_str = str(generalization_level)
+    previous_generalization_level_str = "0"
+    dimension_table = column_name + "_dim"
+    dimension_with_previous_generalization_level = dimension_table + ".\"" + previous_generalization_level_str + "\""#nome tabella dimensioni con livello di generalizzazione precedente
+    if column_name in attributes:#se la colonna è un qi
+        group_by_attributes.remove(column_name)#rimuovo la colonna dai qi
+        group_by_attributes.add(dimension_table + ".\"" + generalization_level_str + "\"")#aggiungo la colonna con il livello di generalizzazione
+    return column_name, dimension_table, dimension_with_previous_generalization_level, generalization_level_str
 
 
 def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
-        print("frequency_set_of_T_wrt_attributes_of_node_using_T")
-        """
+        print("frequency_set_of_T_wrt_attributes_of_node_using_T ", node)
         attributes = get_dimensions_of_node(node)
         try:
             attributes.remove("null")
@@ -147,74 +191,348 @@ def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
             column_name, dimension_table, dimension_with_previous_generalization_level, generalization_level_str = \
                 prepare_query_parameters(attributes, dims_and_indexes_s_node, group_by_attributes, i)
 
-            where_item = "" + dataset + "." + column_name + " = " + dimension_with_previous_generalization_level
+            where_item = "" + dataset_name + "." + column_name + " = " + dimension_with_previous_generalization_level
 
             dimension_table_names.append(dimension_table)
             where_items.append(where_item)
 
-        cursor.execute("SELECT COUNT(*) FROM " + dataset + ", " + ', '.join(dimension_table_names) +
+        cursor.execute("SELECT COUNT(*) FROM " + dataset_name + ", " + ', '.join(dimension_table_names) +
                     " WHERE " + 'and '.join(where_items) + " GROUP BY " + ', '.join(group_by_attributes))
         freq_set = list()
         for count in list(cursor):
             freq_set.append(count[0])
-        return freq_set"""
+        return freq_set
 
+
+def frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i):
+    print("frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set ", node)
+    i_str = str(i)
+    dims_and_indexes_s_node = get_dims_and_indexes_of_node(node)
+
+    attributes = get_dimensions_of_node(node)
+    try:
+        while True:
+            attributes.remove("null")
+    except:
+        pass
+    cursor.execute("CREATE TEMPORARY TABLE TempTable (count INT, " + ', '.join(attributes) + ")")
+
+    select_items = list()
+    where_items = list()
+    group_by_attributes = set(attributes)
+    dimension_table_names = list()
+
+    for i in range(len(dims_and_indexes_s_node)):
+
+        if dims_and_indexes_s_node[i][0] == "null" or dims_and_indexes_s_node[i][1] == "null":
+            continue
+        column_name, dimension_table, dimension_with_previous_generalization_level, generalization_level_str = \
+            prepare_query_parameters(attributes, dims_and_indexes_s_node, group_by_attributes, i)
+
+        select_item = dimension_table + ".\"" + generalization_level_str + "\" AS " + column_name
+        where_item = "" + dataset_name + "." + column_name + " = " + dimension_with_previous_generalization_level
+
+        select_items.append(select_item)
+        where_items.append(where_item)
+        dimension_table_names.append(dimension_table)
+
+    cursor.execute("INSERT INTO TempTable"
+                   " SELECT COUNT(*) AS count, " + ', '.join(select_items) +
+                   " FROM " + dataset_name + ", " + ', '.join(dimension_table_names) +
+                   " WHERE " + 'AND '.join(where_items) +
+                   " GROUP BY " + ', '.join(group_by_attributes))
+
+    cursor.execute("SELECT SUM(count) FROM TempTable GROUP BY " + ', '.join(attributes))
+    results = list(cursor)
+    freq_set = list()
+    for result in results:
+        freq_set.append(result[0])
+
+    cursor.execute("DROP TABLE TempTable")
+
+    return freq_set
+
+def table_is_k_anonymous_wrt_attributes_of_node(frequency_set):
+    if len(frequency_set) == 0: #se non ci sono tuple
+        return False
+    for count in frequency_set: #per ogni count
+        if type(count) == tuple: #se count è una tupla
+            count = count[0] #prendo il primo elemento
+        if k > count > threshold: #se count è maggiore di threshold e minore di k
+            return False
+    return True
+
+def mark_all_direct_generalizations_of_node(marked_nodes, node, i):
+    i_str = str(i)
+    marked_nodes.add(node[0])#aggiungo il nodo alla lista dei nodi marcati
+    cursor.execute("SELECT E" + i_str + ".end FROM C" + i_str + ", E" + i_str + " WHERE ID = E" + i_str +
+                   ".start and ID = " + str(node[0]))#tiro fuori gli eventuali nodi figlio ovvero (Ei.end, possono essere piu tuple -> piu figli)
+    for node_to_mark in list(cursor):#per ogni nodo figlio
+        marked_nodes.add(node_to_mark[0])#aggiungo il nodo alla lista dei nodi marcati
+
+
+def insert_direct_generalization_of_node_in_queue(node, queue, i, Si):
+    i_str = str(i)
+    cursor.execute("SELECT E" + i_str + ".end FROM C" + i_str + ", E" + i_str + " WHERE ID = E" + i_str +
+                   ".start and ID = " + str(node[0]))  #tiro fuori gli eventuali nodi figlio ovvero (Ei.end, possono essere piu tuple -> piu figli)
+    nodes_to_put = set(cursor)
+
+    Si_indices = set()
+    for node in Si:
+        Si_indices.add(node[0]) #set of IDs of nodes in Si
+
+    for node_to_put in nodes_to_put: #per ogni nodo figlio
+        # node_to_put == (ID,) -.-
+        if node_to_put[0] not in Si_indices: #se il nodo (Ei.end) non è in Si
+            continue
+        node_to_put = node_to_put[0]
+        cursor.execute("SELECT * FROM C" + i_str + " WHERE ID = " + str(node_to_put))#tiro fuori il nodo figlio
+        node = (list(cursor)[0])#prendo il campo ID
+        queue.put_nowait((-get_height_of_node(node), node)) #aggingo alla coda il nodo con priorità -altezza
 
 def basic_incognito_algorithm(priority_queue):
     init_C1_and_E1()
     queue = priority_queue
     marked_nodes = set()
-
     """
     #test
     cursor.execute("SELECT C1.* FROM C1, E1 WHERE C1.ID = E1.start EXCEPT SELECT C1.* FROM C1, E1 WHERE C1.ID = E1.end" )  #quelli a cui non appaiono i propri id nel campo Ei.end, ovvero non hanno archi entranti, ovvero sono root
     result = cursor.fetchall()
     print(result)"""
-    
-    
     for i in range(1, len(Q) + 1):
         i_str = str(i)
         cursor.execute("SELECT * FROM C" + i_str + "")
-        Si = set(cursor) #Si = set of nodes of Ci
-
+        results = cursor.fetchall()
+        print("Table C"+str(i)+" ", results)
+        Si = set(results) #Si = set of nodes of Ci
+     
+        
         # no edge directed to a node => root
         cursor.execute("SELECT C" + i_str + ".* FROM C" + i_str + ", E" + i_str + " WHERE C" + i_str + ".ID = E" +
                        i_str + ".start EXCEPT SELECT C" + i_str + ".* FROM C" + i_str + ", E" + i_str + " WHERE C" +
                        i_str + ".ID = E" + i_str + ".end ") #quelli a cui non appaiono i propri id nel campo Ei.end, ovvero non hanno archi entranti, ovvero sono root
-        roots = set(cursor)
-        #coda delle root
-        roots_in_queue = set()
+        roots = set(cursor) #set of roots
+        roots_in_queue = set()#set of roots to put in queue
         #ordino by heightt
         for node in roots:
-            height = get_height_of_node(node)
+            height = get_height_of_node(node)#calcolo altezza
             # -height because priority queue shows the lowest first. Syntax: (priority number, data)
-            roots_in_queue.add((-height, node))
+            roots_in_queue.add((-height, node))#aggiungo alla coda con priorità -altezza
         #aggiungo alla coda
         for upgraded_node in roots_in_queue:
-            queue.put_nowait(upgraded_node)
-
-
-        
+            queue.put_nowait(upgraded_node)#aggiungo alla coda le root
+      
         while not queue.empty():
             upgraded_node = queue.get_nowait()
-            print(upgraded_node)
+           # print("upgraded node ",upgraded_node)
             # [1] => pick 'node' in (-height, node),
             node = upgraded_node[1]
+            #print("node: ", node)
+            
             if node[0] not in marked_nodes:
                 if node in roots:
                     frequency_set = frequency_set_of_T_wrt_attributes_of_node_using_T(node)
-                """
                 else:
                     frequency_set = frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i)
                 if table_is_k_anonymous_wrt_attributes_of_node(frequency_set):
+                    print("anonymus", node)
                     mark_all_direct_generalizations_of_node(marked_nodes, node, i)
                 else:
+                    print("not anonymus", node)
                     Si.remove(node)
                     insert_direct_generalization_of_node_in_queue(node, queue, i, Si)
                     cursor.execute("DELETE FROM C" + str(i) + " WHERE ID = " + str(node[0]))
 
         graph_generation(Si, i)
-        marked_nodes = set()"""
+        marked_nodes = set()
+
+
+def graph_generation(Si, i):
+
+    i_here = i+1
+    i_str = str(i)
+    ipp_str = str(i+1)
+    if i < len(Q):
+        print("Generating graphs for " + ipp_str + " quasi-identifiers", end="")
+    # to create Si we need all column names of Ci
+    # PRAGMA returns infos of the table like (0, 'ID', 'INTEGER', 0, None, 1), (1, 'dim1', 'TEXT', 0, None, 0), ...
+    cursor.execute("PRAGMA table_info(C" + i_str + ")")
+    results = cursor.fetchall()
+    print("\nTABELLA C" + i_str + " ", results)
+
+    column_infos = list()
+    column_infos_from_db = list(results)
+    for column in column_infos_from_db:
+        if column[1] == "ID":
+            column_infos.append("ID INTEGER PRIMARY KEY")
+        else:
+            column_infos.append(str(column[1]) + " " + str(column[2]))
+
+    print(f"Creating table S{i_str}: CREATE TABLE IF NOT EXISTS S{i_str} ({', '.join(column_infos)})")
+    cursor.execute("CREATE TABLE IF NOT EXISTS S" + i_str + " (" + ', '.join(column_infos) + ")")
+
+    question_marks = ", ".join(["?"] * len(column_infos_from_db))
+
+    print(f"Inserting into S{i_str} with question marks: {question_marks}")
+    cursor.executemany("INSERT INTO S" + i_str + " VALUES (" + question_marks + ")", Si)
+
+    cursor.execute("SELECT * FROM S" + i_str)
+    results = cursor.fetchall()
+    Si_new = set(results)
+    print("Si_new ", results)
+
+    if i == len(Q):
+        return
+
+    i_here_str = str(i_here)
+
+    print(f"Creating table C{ipp_str}: CREATE TABLE IF NOT EXISTS C{ipp_str} ({', '.join(column_infos)})")
+    cursor.execute("CREATE TABLE IF NOT EXISTS C" + ipp_str + " (" + ', '.join(column_infos) + ")")
+
+    print(f"Altering table C{ipp_str} to add columns: ALTER TABLE C{ipp_str} ADD COLUMN dim{i_here_str} TEXT")
+    cursor.execute("ALTER TABLE C" + ipp_str + " ADD COLUMN dim" + i_here_str + " TEXT")
+
+    print(f"Altering table C{ipp_str} to add columns: ALTER TABLE C{ipp_str} ADD COLUMN index{i_here_str} INT")
+    cursor.execute("ALTER TABLE C" + ipp_str + " ADD COLUMN index" + i_here_str + " INT")
+
+    cursor.execute(
+        "UPDATE C" + ipp_str + " SET dim" + i_here_str + " = 'null', index" + i_here_str + "= 'null' WHERE index" + i_here_str + " is null"
+    )
+
+    select_str = ""
+    select_str_except = ""
+    where_str = ""
+
+    for j in range(2, i_here):
+        j_str = str(j)
+        if j == i_here - 1:
+            select_str += ", p.dim" + j_str + ", p.index" + j_str + ", q.dim" + j_str + ", q.index" + j_str
+            select_str_except += ", q.dim" + j_str + ", q.index" + j_str + ", p.dim" + j_str + ", p.index" + j_str
+            where_str += " and p.dim" + j_str + "<q.dim" + j_str
+        else:
+            select_str += ", p.dim" + j_str + ", p.index" + j_str
+            select_str_except += ", q.dim" + j_str + ", q.index" + j_str
+            where_str += " and p.dim" + j_str + "=q.dim" + j_str + " and p.index" + j_str + "=q.index" + j_str
+
+    cursor.execute("SELECT * FROM S" + i_str)
+    s_results = cursor.fetchall()
+    print(f"Contents of S{i_str} before join: {s_results}")
+
+    join_query = ""
+    if i > 1:
+        join_query = (
+            "INSERT INTO C" + ipp_str +
+            " SELECT null, p.dim1, p.index1, p.ID, q.ID" + select_str +
+            " FROM S" + i_str + " p, S" + i_str + " q WHERE p.dim1 = q.dim1 and p.index1 = q.index1 " + where_str
+        )
+    else:
+        join_query = (
+            "INSERT INTO C" + ipp_str + " SELECT null, p.dim1, p.index1, p.ID, q.ID, q.dim1, q.index1"
+            " FROM S" + i_str + " p, S" + i_str + " q WHERE p.dim1 < q.dim1"
+        )
+
+    print(f"Join query: {join_query}")
+    cursor.execute(join_query)
+
+    cursor.execute("SELECT * FROM C" + ipp_str)
+    results = cursor.fetchall()
+    print("\nJOIN FASE C" + ipp_str + " ", results)
+
+    Ci_new = set(results)
+
+    # prune phase
+    # all subsets of Si == dims_and_indexes of all nodes in Si
+    # for all nodes in Ci+1 we will remove the nodes that contain a subset of dims_and_indexes
+    # which is not in all_subsets_of_Si
+    all_subsets_of_Si = set()
+    for node in Si_new:
+        all_subsets_of_Si.add(tuple(get_dims_and_indexes_of_node(node)))#set of all subsets of Si
+    for c in Ci_new:#per ogni nodo di Ci+1
+        for s in subsets(get_dims_and_indexes_of_node(c), i):#per ogni sottoinsieme di dimensioni e indici del nodo
+            if s not in all_subsets_of_Si:#se il sottoinsieme non è in all_subsets_of_Si
+                print("PRUNING FASE C"+ipp_str+" ", c)
+                node_id = str(c[0])#prendo l'id del nodo
+                cursor.execute("DELETE FROM C" + ipp_str + " WHERE C" + ipp_str + ".ID = " + node_id)#elimino il nodo
+
+    # edge generation
+    cursor.execute("CREATE TABLE IF NOT EXISTS E" + ipp_str + " (start INT, end INT)")#creo tabella archi
+    cursor.execute("INSERT INTO E" + ipp_str + " "
+                   "WITH CandidatesEdges(start, end) AS ("
+                   "SELECT p.ID, q.ID "
+                   "FROM C" + ipp_str + " p,C" + ipp_str + " q,E" + i_str + " e,E" + i_str + " f "
+                   "WHERE (e.start = p.parent1 AND e.end = q.parent1 "
+                   "AND f.start = p.parent2 AND f.end = q.parent2) "
+                   "OR (e.start = p.parent1 AND e.end = q.parent1 "
+                   "AND p.parent2 = q.parent2) "
+                   "OR (e.start = p.parent2 AND e.end = q.parent2 "
+                   "AND p.parent1 = q.parent1) "
+                   ") "
+                   "SELECT D.start, D.end "
+                   "FROM CandidatesEdges D "
+                   "EXCEPT "
+                   "SELECT D1.start, D2.end "
+                   "FROM CandidatesEdges D1, CandidatesEdges D2 "
+                   "WHERE D1.end = D2.start")#creo archi
+    cursor.execute("SELECT * FROM E" + ipp_str)
+    results = cursor.fetchall()
+    print("Edge Generation FASE E"+ipp_str+" ", results)
+    print("\t OK")
+
+
+def projection_of_attributes_of_Sn_onto_T_and_dimension_tables(Sn):
+    # get node with lowest height, as it should be the least "generalized" one that makes the table k-anonymous
+    lowest_node = min(Sn, key=lambda t: t[0])#prendo il nodo con altezza minima, da errore
+    height = get_height_of_node(lowest_node)#calcolo altezza
+    #calcolo nodo con la minima altezza
+    for node in Sn:
+        temp_height = get_height_of_node(node)#calcolo altezza
+        if temp_height < height:
+            height = temp_height
+            lowest_node = node
+
+    print("Chosen anonymization levels: ", end="")
+
+    # get QI names and their indexes (i.e. their generalization level)
+    qis = list()
+    qi_indexes = list()
+    for i in range(len(lowest_node)):#per ogni colonna del nodo
+        if lowest_node[i] in Q:#se la colonna è un qi
+            qis.append(lowest_node[i])#aggiungo il qi
+            qi_indexes.append(lowest_node[i+1])#aggiungo il livello di generalizzazione
+            print(str(lowest_node[i]) + "(" + str(lowest_node[i+1]) + ") ", end="")#stampo il qi e il suo livello di generalizzazione
+    print("")
+
+    # get all table attributes with generalized QI's in place of the original ones
+    gen_attr = attributes
+    considered_gen_qis =list()
+    for i in range(len(gen_attr)):#per ogni colonna della tabella principale
+        gen_attr[i] = gen_attr[i].split()[0]#prendo solo il nome della colonna
+        if gen_attr[i] in qis:#se la colonna è un qi
+            gen_attr[i] = qis[qis.index(gen_attr[i])] + "_dim.'" + str(qi_indexes[qis.index(gen_attr[i])]) + "'"#sostituisco il qi con il qi_dim
+            considered_gen_qis.append(gen_attr[i])#aggiungo il qi alla lista dei qi considerati
+
+    # get dimension tables names
+    dim_tables = list()
+    for qi in qis:
+        dim_tables.append(qi + "_dim")#aggiungo a qi -> _dim in dim_tables
+
+    # get pairings for the SQL JOIN
+    pairs = list()
+    for x, y in zip(qis, dim_tables):#per ogni qi e tabella dimensioni
+        pairs.append(x + "=" + y + ".'0'")#aggiungo la coppia qi=qi_dim.'0'
+
+    cursor.execute("SELECT " + ', '.join(gen_attr) + " FROM " + dataset_name + ", " + ', '.join(dim_tables) +
+            " WHERE " + 'AND '.join(pairs) + " AND (" + ', '.join(considered_gen_qis) + ") IN"
+            " (SELECT " + ', '.join(considered_gen_qis) + " FROM " + dataset_name + ", " + ', '.join(dim_tables) +
+            " WHERE " + 'AND '.join(pairs) + "GROUP BY " + ', '.join(considered_gen_qis) + " HAVING"
+            " COUNT(*) > " + str(threshold) + ")")#query per la proiezione
+
+    print("Writing k-anonymous table to anonymous_table.csv", end="")
+    with open("anonymous_table.csv", "w") as anonymous_table: #
+        for row in list(cursor):#per ogni riga del risultato della query
+            anonymous_table.writelines(','.join(str(x) for x in row) + "\n")#scrivo tale riga nel file
+        anonymous_table.close()#chiudo il file
+    print("\t OK")
                 
     
 
@@ -292,10 +610,10 @@ if __name__ == "__main__":
     # we must pass the priorityQueue otherwise the body of the function can't see and instantiates a PriorityQueue
     basic_incognito_algorithm(queue.PriorityQueue())
 
-    connection.close()
+
     
     
-    """""
+    
     cursor.execute("SELECT * FROM S" + str(len(Q)))
     Sn = list(cursor)
 
@@ -303,4 +621,4 @@ if __name__ == "__main__":
 
     print("DONE")
 
-    connection.close()"""
+    connection.close()
