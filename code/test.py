@@ -47,8 +47,8 @@ def plot_with_k(k):
 
 
 if __name__ == "__main__":
-    dimensionsTable = ['dateandTime.csv','gender.csv', 'race.csv', 'age.csv', 'zipCode.csv','height.csv', 'weight.csv'] #without patientId.csv
+    dimensionsTable = ['dateandTime.csv','gender.csv', 'race.csv', 'age.csv', 'zipCode.csv','height.csv', 'weight.csv']
     #QIs = range(2, 8)
-    QIs = range(2, 4)
+    QIs = range(2, 8)
     plot_with_k(2)
-    #plot_with_k(10)
+    plot_with_k(10)

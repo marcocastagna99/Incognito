@@ -8,10 +8,8 @@ import pandas as pd
 import csv
 from statistics import mean
 
-#tutto cio che non è commentato funziona
-#devo continuare dalla parte commentata    progress: 48%
-#per ora va il parsing e crea le tabelle sql relative alle dimensioni, inizializza C1/E1 (nodi e archi di un solo qi)
-#continuare incognito, capire il graph generation e fare il test finale
+
+#l'errore potrebbe essere nelle query di calcolo frequenze, da verificare
 
 def prepare_table_for_k_anonymization(dataset, dataset_name):
     with open(dataset, "r") as dataset_table:
@@ -19,9 +17,9 @@ def prepare_table_for_k_anonymization(dataset, dataset_name):
         print(f"Working on dataset {dataset_name}")
 
         # first line contains attribute names
-        attribute_names = [attr.strip() + " TEXT" for attr in dataset_table.readline().split(",")]
-        cursor.execute(f"CREATE TABLE IF NOT EXISTS {dataset_name} ({','.join(attribute_names)})")  # create the table
-        print(f"Attributes found: {[attr.strip() for attr in attribute_names]}")
+        attributes_name = [attr.strip() + " TEXT" for attr in dataset_table.readline().split(",")]
+        cursor.execute(f"CREATE TABLE IF NOT EXISTS {dataset_name} ({','.join(attributes_name)})")  # create the table
+        print(f"Attributes found: {[attr.strip() for attr in attributes_name]}")
 
         # insert records into the SQL table
         for line in dataset_table:  # iterate over lines
@@ -32,6 +30,7 @@ def prepare_table_for_k_anonymization(dataset, dataset_name):
                 placeholders = ', '.join('?' for _ in values)
                 cursor.execute(f"INSERT INTO {dataset_name} VALUES ({placeholders})", tuple(values))  # insert the values
                 connection.commit()
+    return attributes_name
 
 
 #IMPORTANT each columns of the csv file rappresent different level of generalization
@@ -63,14 +62,14 @@ def get_dimension_tables(all_csv):
 
 def create_sql_dimension_tables(tables):
     for qi, table in tables.items():
-        # create SQL table
-        columns = ["'{}' TEXT".format(i) for i in table]
-        cursor.execute("CREATE TABLE IF NOT EXISTS {}_dim ({})".format(qi, ", ".join(columns)))
+        # Crea la tabella SQL
+        columns = ["'{}' TEXT".format(i.replace("-", "_")) for i in table]
+        cursor.execute("CREATE TABLE IF NOT EXISTS {}_dim ({})".format(qi.replace("-", "_"), ", ".join(columns)))
 
-        # insert values into the newly created table
+        # Inserisci i valori nella tabella appena creata
         for i in range(len(table["1"])):
-            row = ", ".join("'{}'".format(str(table[j][i])) for j in table)
-            cursor.execute("INSERT INTO {}_dim VALUES ({})".format(qi, row))
+            row = ", ".join("'{}'".format(str(table[j][i]).replace("-", "_")) for j in table)
+            cursor.execute("INSERT INTO {}_dim VALUES ({})".format(qi.replace("-", "_"), row))
         connection.commit()
 
 
@@ -82,7 +81,7 @@ def table_exists(nome_tabella):
 def control(tables):
     for qi in tables:
         if table_exists(qi + "_dim"):
-            print("esiste")
+            #print("esiste")
             cursor.execute("SELECT * FROM " + qi + "_dim")
             result = cursor.fetchall()
             print(result)
@@ -163,7 +162,9 @@ def get_dims_and_indexes_of_node(node):
 
 def prepare_query_parameters(attributes, dims_and_indexes_s_node, group_by_attributes, i):
     column_name = dims_and_indexes_s_node[i][0]#nome colonna
+    #print(column_name)
     generalization_level = dims_and_indexes_s_node[i][1]#livello di generalizzazione
+   # print(generalization_level)
     generalization_level_str = str(generalization_level)
     previous_generalization_level_str = "0"
     dimension_table = column_name + "_dim"
@@ -175,7 +176,7 @@ def prepare_query_parameters(attributes, dims_and_indexes_s_node, group_by_attri
 
 
 def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
-        print("frequency_set_of_T_wrt_attributes_of_node_using_T ", node)
+     #   print("frequency_set_of_T_wrt_attributes_of_node_using_T ", node)
         attributes = get_dimensions_of_node(node)
         try:
             attributes.remove("null")
@@ -195,17 +196,19 @@ def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
 
             dimension_table_names.append(dimension_table)
             where_items.append(where_item)
-
+        #print(f"Selecting into "+ dataset_name + ", " + ', '.join(dimension_table_names) + " WHERE " + 'and '.join(where_items) + " GROUP BY " + ', '.join(group_by_attributes))
         cursor.execute("SELECT COUNT(*) FROM " + dataset_name + ", " + ', '.join(dimension_table_names) +
                     " WHERE " + 'and '.join(where_items) + " GROUP BY " + ', '.join(group_by_attributes))
+        results= cursor.fetchall()
+        #print(results)
         freq_set = list()
-        for count in list(cursor):
+        for count in list(results):
             freq_set.append(count[0])
         return freq_set
 
 
 def frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i):
-    print("frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set ", node)
+   # print("frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set ", node)
     i_str = str(i)
     dims_and_indexes_s_node = get_dims_and_indexes_of_node(node)
 
@@ -235,12 +238,12 @@ def frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node,
         select_items.append(select_item)
         where_items.append(where_item)
         dimension_table_names.append(dimension_table)
-
     cursor.execute("INSERT INTO TempTable"
                    " SELECT COUNT(*) AS count, " + ', '.join(select_items) +
                    " FROM " + dataset_name + ", " + ', '.join(dimension_table_names) +
                    " WHERE " + 'AND '.join(where_items) +
                    " GROUP BY " + ', '.join(group_by_attributes))
+  
 
     cursor.execute("SELECT SUM(count) FROM TempTable GROUP BY " + ', '.join(attributes))
     results = list(cursor)
@@ -303,7 +306,7 @@ def basic_incognito_algorithm(priority_queue):
         i_str = str(i)
         cursor.execute("SELECT * FROM C" + i_str + "")
         results = cursor.fetchall()
-        print("Table C"+str(i)+" ", results)
+        #print("Table C"+str(i)+" ", results)
         Si = set(results) #Si = set of nodes of Ci
      
         
@@ -335,15 +338,13 @@ def basic_incognito_algorithm(priority_queue):
                 else:
                     frequency_set = frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i)
                 if table_is_k_anonymous_wrt_attributes_of_node(frequency_set):
-                    print("anonymus", node)
                     mark_all_direct_generalizations_of_node(marked_nodes, node, i)
                 else:
-                    print("not anonymus", node)
                     Si.remove(node)
                     insert_direct_generalization_of_node_in_queue(node, queue, i, Si)
                     cursor.execute("DELETE FROM C" + str(i) + " WHERE ID = " + str(node[0]))
 
-        graph_generation(Si, i)
+        graph_generation(Si, i)#crea i candidati nodi e archi per la prossima iterazione dell'algoritmo (join, prune, edge generation)
         marked_nodes = set()
 
 
@@ -358,7 +359,7 @@ def graph_generation(Si, i):
     # PRAGMA returns infos of the table like (0, 'ID', 'INTEGER', 0, None, 1), (1, 'dim1', 'TEXT', 0, None, 0), ...
     cursor.execute("PRAGMA table_info(C" + i_str + ")")
     results = cursor.fetchall()
-    print("\nTABELLA C" + i_str + " ", results)
+    #print("\nTABELLA C" + i_str + " ", results)
 
     column_infos = list()
     column_infos_from_db = list(results)
@@ -368,31 +369,31 @@ def graph_generation(Si, i):
         else:
             column_infos.append(str(column[1]) + " " + str(column[2]))
 
-    print(f"Creating table S{i_str}: CREATE TABLE IF NOT EXISTS S{i_str} ({', '.join(column_infos)})")
+   # print(f"Creating table S{i_str}: CREATE TABLE IF NOT EXISTS S{i_str} ({', '.join(column_infos)})")
     cursor.execute("CREATE TABLE IF NOT EXISTS S" + i_str + " (" + ', '.join(column_infos) + ")")
 
     question_marks = ", ".join(["?"] * len(column_infos_from_db))
 
-    print(f"Inserting into S{i_str} with question marks: {question_marks}")
+   # print(f"Inserting into S{i_str} with question marks: {question_marks}")
     cursor.executemany("INSERT INTO S" + i_str + " VALUES (" + question_marks + ")", Si)
 
     cursor.execute("SELECT * FROM S" + i_str)
     results = cursor.fetchall()
     Si_new = set(results)
-    print("Si_new ", results)
+   # print("Si_new ", results)
 
     if i == len(Q):
         return
 
     i_here_str = str(i_here)
 
-    print(f"Creating table C{ipp_str}: CREATE TABLE IF NOT EXISTS C{ipp_str} ({', '.join(column_infos)})")
+   # print(f"Creating table C{ipp_str}: CREATE TABLE IF NOT EXISTS C{ipp_str} ({', '.join(column_infos)})")
     cursor.execute("CREATE TABLE IF NOT EXISTS C" + ipp_str + " (" + ', '.join(column_infos) + ")")
 
-    print(f"Altering table C{ipp_str} to add columns: ALTER TABLE C{ipp_str} ADD COLUMN dim{i_here_str} TEXT")
+   # print(f"Altering table C{ipp_str} to add columns: ALTER TABLE C{ipp_str} ADD COLUMN dim{i_here_str} TEXT")
     cursor.execute("ALTER TABLE C" + ipp_str + " ADD COLUMN dim" + i_here_str + " TEXT")
 
-    print(f"Altering table C{ipp_str} to add columns: ALTER TABLE C{ipp_str} ADD COLUMN index{i_here_str} INT")
+   # print(f"Altering table C{ipp_str} to add columns: ALTER TABLE C{ipp_str} ADD COLUMN index{i_here_str} INT")
     cursor.execute("ALTER TABLE C" + ipp_str + " ADD COLUMN index" + i_here_str + " INT")
 
     cursor.execute(
@@ -414,9 +415,9 @@ def graph_generation(Si, i):
             select_str_except += ", q.dim" + j_str + ", q.index" + j_str
             where_str += " and p.dim" + j_str + "=q.dim" + j_str + " and p.index" + j_str + "=q.index" + j_str
 
-    cursor.execute("SELECT * FROM S" + i_str)
-    s_results = cursor.fetchall()
-    print(f"Contents of S{i_str} before join: {s_results}")
+    #cursor.execute("SELECT * FROM S" + i_str)
+    #s_results = cursor.fetchall()
+   # print(f"Contents of S{i_str} before join: {s_results}")
 
     join_query = ""
     if i > 1:
@@ -431,12 +432,12 @@ def graph_generation(Si, i):
             " FROM S" + i_str + " p, S" + i_str + " q WHERE p.dim1 < q.dim1"
         )
 
-    print(f"Join query: {join_query}")
+   # print(f"Join query: {join_query}")
     cursor.execute(join_query)
 
     cursor.execute("SELECT * FROM C" + ipp_str)
     results = cursor.fetchall()
-    print("\nJOIN FASE C" + ipp_str + " ", results)
+   # print("\nJOIN FASE C" + ipp_str + " ", results)
 
     Ci_new = set(results)
 
@@ -450,7 +451,7 @@ def graph_generation(Si, i):
     for c in Ci_new:#per ogni nodo di Ci+1
         for s in subsets(get_dims_and_indexes_of_node(c), i):#per ogni sottoinsieme di dimensioni e indici del nodo
             if s not in all_subsets_of_Si:#se il sottoinsieme non è in all_subsets_of_Si
-                print("PRUNING FASE C"+ipp_str+" ", c)
+                #print("PRUNING FASE C"+ipp_str+" ", c)
                 node_id = str(c[0])#prendo l'id del nodo
                 cursor.execute("DELETE FROM C" + ipp_str + " WHERE C" + ipp_str + ".ID = " + node_id)#elimino il nodo
 
@@ -475,64 +476,92 @@ def graph_generation(Si, i):
                    "WHERE D1.end = D2.start")#creo archi
     cursor.execute("SELECT * FROM E" + ipp_str)
     results = cursor.fetchall()
-    print("Edge Generation FASE E"+ipp_str+" ", results)
+   # print("Edge Generation FASE E"+ipp_str+" ", results)
     print("\t OK")
 
 
 def projection_of_attributes_of_Sn_onto_T_and_dimension_tables(Sn):
-    # get node with lowest height, as it should be the least "generalized" one that makes the table k-anonymous
-    lowest_node = min(Sn, key=lambda t: t[0])#prendo il nodo con altezza minima, da errore
-    height = get_height_of_node(lowest_node)#calcolo altezza
-    #calcolo nodo con la minima altezza
+        # Trova il nodo con l'altezza minima
+    lowest_node = min(Sn, key=lambda t: get_height_of_node(t))
+    height = get_height_of_node(lowest_node)
+
+    # Calcolo del nodo con l'altezza minima
     for node in Sn:
-        temp_height = get_height_of_node(node)#calcolo altezza
+        temp_height = get_height_of_node(node)
         if temp_height < height:
             height = temp_height
             lowest_node = node
 
     print("Chosen anonymization levels: ", end="")
+    #print("Sn", Sn)
+    #print("Q", Q)
+    #print("attributes", attributes)
 
-    # get QI names and their indexes (i.e. their generalization level)
+ # get QI names and their indexes (i.e. their generalization level)
     qis = list()
     qi_indexes = list()
-    for i in range(len(lowest_node)):#per ogni colonna del nodo
-        if lowest_node[i] in Q:#se la colonna è un qi
-            qis.append(lowest_node[i])#aggiungo il qi
-            qi_indexes.append(lowest_node[i+1])#aggiungo il livello di generalizzazione
-            print(str(lowest_node[i]) + "(" + str(lowest_node[i+1]) + ") ", end="")#stampo il qi e il suo livello di generalizzazione
+    for i in range(len(lowest_node)):
+        if lowest_node[i] in Q:
+            qis.append(lowest_node[i])
+            qi_indexes.append(lowest_node[i+1])
+            print(str(lowest_node[i]) + "(" + str(lowest_node[i+1]) + ") ", end="")
     print("")
 
     # get all table attributes with generalized QI's in place of the original ones
-    gen_attr = attributes
+    gen_attr = attributes_name
     considered_gen_qis =list()
-    for i in range(len(gen_attr)):#per ogni colonna della tabella principale
-        gen_attr[i] = gen_attr[i].split()[0]#prendo solo il nome della colonna
-        if gen_attr[i] in qis:#se la colonna è un qi
-            gen_attr[i] = qis[qis.index(gen_attr[i])] + "_dim.'" + str(qi_indexes[qis.index(gen_attr[i])]) + "'"#sostituisco il qi con il qi_dim
-            considered_gen_qis.append(gen_attr[i])#aggiungo il qi alla lista dei qi considerati
+    for i in range(len(gen_attr)):
+        gen_attr[i] = gen_attr[i].split()[0]
+        if gen_attr[i] in qis:
+            gen_attr[i] = qis[qis.index(gen_attr[i])] + "_dim.'" + str(qi_indexes[qis.index(gen_attr[i])]) + "'"
+            considered_gen_qis.append(gen_attr[i])
 
-    # get dimension tables names
-    dim_tables = list()
-    for qi in qis:
-        dim_tables.append(qi + "_dim")#aggiungo a qi -> _dim in dim_tables
+    # Debug: print generalized attributes and considered QIs
+    #print("Generalized attributes:", gen_attr)
+    #print("Considered Generalized QIs:", considered_gen_qis)
 
-    # get pairings for the SQL JOIN
-    pairs = list()
-    for x, y in zip(qis, dim_tables):#per ogni qi e tabella dimensioni
-        pairs.append(x + "=" + y + ".'0'")#aggiungo la coppia qi=qi_dim.'0'
+    # Ottieni i nomi delle tabelle dimensioni
+    dim_tables = [f"{qi}_dim" for qi in qis]
 
-    cursor.execute("SELECT " + ', '.join(gen_attr) + " FROM " + dataset_name + ", " + ', '.join(dim_tables) +
-            " WHERE " + 'AND '.join(pairs) + " AND (" + ', '.join(considered_gen_qis) + ") IN"
-            " (SELECT " + ', '.join(considered_gen_qis) + " FROM " + dataset_name + ", " + ', '.join(dim_tables) +
-            " WHERE " + 'AND '.join(pairs) + "GROUP BY " + ', '.join(considered_gen_qis) + " HAVING"
-            " COUNT(*) > " + str(threshold) + ")")#query per la proiezione
+    # Debug: stampa tabelle dimensioni
+    #print("Dimension tables:", dim_tables)
+
+    # Ottieni le coppie per il JOIN SQL
+    pairs = [f"{x}={y}.'0'" for x, y in zip(qis, dim_tables)]
+
+    # Debug: stampa coppie per il JOIN
+    #print("Pairs for JOIN:", pairs)
+
+    # Costruisci le clausole della query
+    select_clause = "SELECT " + ', '.join(gen_attr)
+    from_clause = " FROM " + dataset_name + ", " + ', '.join(dim_tables)
+    where_clause = " WHERE " + ' AND '.join(pairs)
+    subquery_clause = (
+        " AND (" + ', '.join(considered_gen_qis) + ") IN"
+        " (SELECT " + ', '.join(considered_gen_qis) +
+        " FROM " + dataset_name + ", " + ', '.join(dim_tables) +
+        " WHERE " + ' AND '.join(pairs) +
+        " GROUP BY " + ', '.join(considered_gen_qis) +
+        " HAVING COUNT(*) > " + str(threshold) + ")"
+    )
+
+    # Costruzione della query completa
+    query = select_clause + from_clause + where_clause + subquery_clause
+
+    # Stampa la query per il debug
+   # print("Query:", query)
+
+    # Esecuzione della query
+    cursor.execute(query)
 
     print("Writing k-anonymous table to anonymous_table.csv", end="")
-    with open("anonymous_table.csv", "w") as anonymous_table: #
-        for row in list(cursor):#per ogni riga del risultato della query
-            anonymous_table.writelines(','.join(str(x) for x in row) + "\n")#scrivo tale riga nel file
-        anonymous_table.close()#chiudo il file
+    with open("anonymous_table.csv", "w") as anonymous_table:
+        for row in cursor.fetchall():
+            anonymous_table.writelines(','.join(str(x) for x in row) + "\n")
+        anonymous_table.close()
     print("\t OK")
+
+
                 
     
 
@@ -555,11 +584,10 @@ if __name__ == "__main__":
     cursor.execute("PRAGMA locking_mode = EXCLUSIVE") #blocco esclusivo
 
     # all attributes of the table
-    attributes = list()
-
+    
     dataset_path = args.dataset #dataset path
     dataset_name = path.basename(dataset_path).split(".")[0] #nome tabella
-    prepare_table_for_k_anonymization(dataset_path, dataset_name) #creo tabella
+    attributes_name=prepare_table_for_k_anonymization(dataset_path, dataset_name) #creo tabella
     
     """
     #test tabella principale
@@ -577,14 +605,21 @@ if __name__ == "__main__":
     Q = set(qis_dimension_tables.keys())  #gli attributi Quasi-identificatori
     #print(qis_dimension_tables)
 
-    
+
     # create dimension SQL tables
     create_sql_dimension_tables(qis_dimension_tables)  #tabelle sql delle qi dimensions
+    #control(Q)
     
-    """#test creazione tabelle dimensioni
-    cursor.execute("SELECT * FROM patientId_dim")
-    result = cursor.fetchall()
+    #test creazione tabelle dimensioni
+    """ cursor.execute('''SELECT hospital.dateandTime, dateandTime_dim."0" FROM hospital, dateandTime_dim''')
+    results= cursor.fetchall()
     # Stampa il risultato
+    for riga in results:
+        print(riga)"""
+    # test pragma main table
+    
+    """ cursor.execute("PRAGMA table_info(dateandTime_dim)")
+    result = cursor.fetchall()
     print(result)"""
 
     k = args.k
@@ -611,11 +646,10 @@ if __name__ == "__main__":
     basic_incognito_algorithm(queue.PriorityQueue())
 
 
-    
-    
-    
     cursor.execute("SELECT * FROM S" + str(len(Q)))
     Sn = list(cursor)
+
+
 
     projection_of_attributes_of_Sn_onto_T_and_dimension_tables(Sn)
 

@@ -44,7 +44,7 @@ def generalize_numeric_field_digits(data, field_name):
 
 
 
-patientIdGen=generalize_numeric_field_digits(data,"PatientID")
+patientIdGen=generalize_numeric_field_digits(data,"patientId")
 patientIdGen=patientIdGen[::-1]
 """ zipGen=generalize_numeric_field_digits(data,"ZIPCode")
 zipGen=zipGen[::-1] """
@@ -106,7 +106,7 @@ with open(percorso_file_csv, 'w', newline='') as file_csv:
     scrittore.writerow(['0', '1'])
 
     # Scrivi i dati nelle colonne
-    for valore_data in data['DateandTime']:
+    for valore_data in data['dateandTime']:
         scrittore.writerow([valore_data, '*'])
 
 #to do:  fare una funzione che unisce tutti le tabelle in unico dict

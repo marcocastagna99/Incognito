@@ -32,7 +32,7 @@ def generate_data(num_tuples):
 
         zip_code = random.randint(16121, 16167)
 
-        race = random.choices(["white", "black", "asian", "hispanic", "native american", "other"], [0.7, 0.1, 0.1, 0.05, 0.03, 0.02], k=1)[0]
+        race = random.choices(["White", "Black", "Asian", "Hispanic", "Native_american", "Other"], [0.7, 0.1, 0.1, 0.05, 0.03, 0.02], k=1)[0]
   
         # Altezza
         #height = fake.random_int(min=140, max=190)  # Altezza in cm
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     csv_filename = "hospital.csv"
     with open(csv_filename, 'w', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csvwriter.writerow(['PatientID', 'DateandTime', 'Gender', 'Race', 'Age', 'ZIPCode', 'Height', 'Weight', 'Hypertension', 'Arthritis', 'Asthma', 'Pneumonia', 'Diabetes'])
+        csvwriter.writerow(['patientId', 'dateandTime', 'gender', 'race', 'age', 'zipCode', 'height', 'weight', 'Hypertension', 'Arthritis', 'Asthma', 'Pneumonia', 'Diabetes'])
         csvwriter.writerows(generated_data)
 
     print(f"{num_tuples} tuples generated and saved to {csv_filename}.")
