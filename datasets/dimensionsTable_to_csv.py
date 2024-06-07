@@ -5,7 +5,7 @@ import csv
 
 
 
-data = pd.read_csv("hospital.csv", delimiter=',', skiprows=0, low_memory=False)
+data = pd.read_csv("../datasets/hospital.csv", delimiter=',', skiprows=0, low_memory=False)
 
 
 def generalize_numeric_field_digits(data, field_name):
@@ -60,7 +60,7 @@ zipGen=zipGen[::-1] """
 
 
 
-percorso_file_csv = 'patientId.csv'
+""" percorso_file_csv = 'patientId.csv'
 
 # Apri il file CSV in modalità scrittura
 with open(percorso_file_csv, 'w', newline='') as file_csv:
@@ -71,7 +71,7 @@ with open(percorso_file_csv, 'w', newline='') as file_csv:
 
     # Itera attraverso gli elementi e scrivi su colonne
     for colonna in zip(*patientIdGen):
-        scrittore.writerow(colonna)
+        scrittore.writerow(colonna) """
 
 
 """ percorso_file_csv = 'zip.csv'
@@ -95,7 +95,7 @@ with open(percorso_file_csv, 'w', newline='') as file_csv:
 #data = {'DateandTime': ['2024-02-20 12:30', '2024-02-20 13:45', '2024-02-20 15:00']}
 
 # Percorso del file CSV
-percorso_file_csv = 'dateandTime.csv'
+percorso_file_csv = '../datasets/dateandTime.csv'
 
 # Apri il file CSV in modalità scrittura
 with open(percorso_file_csv, 'w', newline='') as file_csv:

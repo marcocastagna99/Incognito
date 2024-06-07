@@ -3,6 +3,9 @@ from faker import Faker
 import random
 import numpy as np
 from datetime import datetime, timedelta
+import argparse
+import os
+
 
 
 
@@ -53,14 +56,28 @@ def generate_data(num_tuples):
     return data
 
 if __name__ == "__main__":
-    num_tuples = 1000
+    parser = argparse.ArgumentParser()
+
+    # Add an argument for the number of tuples
+    parser.add_argument('-n', '--num_tuples', type=int, required=True, help='The number of tuples')
+
+    # Parse the arguments
+    args = parser.parse_args()
+
+# Now you can use args.num_tuples as the number of tuples
+    num_tuples = args.num_tuples
+    if num_tuples <= 0:
+        print("Error: The number of tuples must be positive.")
+        exit(1)
+
     generated_data = generate_data(num_tuples)
 
     # Salvataggio del CSV con colonne separate
-    csv_filename = "hospital.csv"
+    csv_filename = "../datasets/hospital.csv"
     with open(csv_filename, 'w', newline='', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         csvwriter.writerow(['patientId', 'dateandTime', 'gender', 'race', 'age', 'zipCode', 'height', 'weight', 'Hypertension', 'Arthritis', 'Asthma', 'Pneumonia', 'Diabetes'])
         csvwriter.writerows(generated_data)
 
     print(f"{num_tuples} tuples generated and saved to {csv_filename}.")
+    

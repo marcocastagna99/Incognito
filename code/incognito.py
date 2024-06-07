@@ -9,7 +9,8 @@ import csv
 from statistics import mean
 
 
-#l'errore potrebbe essere nelle query di calcolo frequenze, da verificare
+
+#fare tanto test
 
 def prepare_table_for_k_anonymization(dataset, dataset_name):
     with open(dataset, "r") as dataset_table:
@@ -176,7 +177,7 @@ def prepare_query_parameters(attributes, dims_and_indexes_s_node, group_by_attri
 
 
 def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
-     #   print("frequency_set_of_T_wrt_attributes_of_node_using_T ", node)
+        print("frequency_set_of_T_wrt_attributes_of_node_using_T ", node)
         attributes = get_dimensions_of_node(node)
         try:
             attributes.remove("null")
@@ -208,7 +209,7 @@ def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
 
 
 def frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i):
-   # print("frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set ", node)
+    print("frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set ", node)
     i_str = str(i)
     dims_and_indexes_s_node = get_dims_and_indexes_of_node(node)
 
@@ -252,7 +253,6 @@ def frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node,
         freq_set.append(result[0])
 
     cursor.execute("DROP TABLE TempTable")
-
     return freq_set
 
 def table_is_k_anonymous_wrt_attributes_of_node(frequency_set):
@@ -272,6 +272,8 @@ def mark_all_direct_generalizations_of_node(marked_nodes, node, i):
                    ".start and ID = " + str(node[0]))#tiro fuori gli eventuali nodi figlio ovvero (Ei.end, possono essere piu tuple -> piu figli)
     for node_to_mark in list(cursor):#per ogni nodo figlio
         marked_nodes.add(node_to_mark[0])#aggiungo il nodo alla lista dei nodi marcati
+    print("Marked nodes: ", marked_nodes)
+
 
 
 def insert_direct_generalization_of_node_in_queue(node, queue, i, Si):
@@ -326,11 +328,13 @@ def basic_incognito_algorithm(priority_queue):
             queue.put_nowait(upgraded_node)#aggiungo alla coda le root
       
         while not queue.empty():
+            print("Queue size: ", queue.qsize())
             upgraded_node = queue.get_nowait()
            # print("upgraded node ",upgraded_node)
             # [1] => pick 'node' in (-height, node),
             node = upgraded_node[1]
             #print("node: ", node)
+            print("Processing node: ", node)
             
             if node[0] not in marked_nodes:
                 if node in roots:
@@ -338,18 +342,20 @@ def basic_incognito_algorithm(priority_queue):
                 else:
                     frequency_set = frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i)
                 if table_is_k_anonymous_wrt_attributes_of_node(frequency_set):
+                    print("anonymus")
                     mark_all_direct_generalizations_of_node(marked_nodes, node, i)
                 else:
+                    print("not anonymus")
                     Si.remove(node)
                     insert_direct_generalization_of_node_in_queue(node, queue, i, Si)
                     cursor.execute("DELETE FROM C" + str(i) + " WHERE ID = " + str(node[0]))
-
+        #print("Si: ", Si)
         graph_generation(Si, i)#crea i candidati nodi e archi per la prossima iterazione dell'algoritmo (join, prune, edge generation)
         marked_nodes = set()
 
 
 def graph_generation(Si, i):
-
+    print("Graph generation for " + str(i) + " quasi-identifiers", end="")
     i_here = i+1
     i_str = str(i)
     ipp_str = str(i+1)
