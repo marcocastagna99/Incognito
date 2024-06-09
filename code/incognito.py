@@ -20,7 +20,7 @@ def prepare_table_for_k_anonymization(dataset, dataset_name):
         # first line contains attribute names
         attributes_name = [attr.strip() + " TEXT" for attr in dataset_table.readline().split(",")]
         cursor.execute(f"CREATE TABLE IF NOT EXISTS {dataset_name} ({','.join(attributes_name)})")  # create the table
-        print(f"Attributes found: {[attr.strip() for attr in attributes_name]}")
+        #print(f"Attributes found: {[attr.strip() for attr in attributes_name]}")
 
         # insert records into the SQL table
         for line in dataset_table:  # iterate over lines
@@ -82,7 +82,6 @@ def table_exists(nome_tabella):
 def control(tables):
     for qi in tables:
         if table_exists(qi + "_dim"):
-            #print("esiste")
             cursor.execute("SELECT * FROM " + qi + "_dim")
             result = cursor.fetchall()
             print(result)
@@ -177,7 +176,7 @@ def prepare_query_parameters(attributes, dims_and_indexes_s_node, group_by_attri
 
 
 def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
-        print("frequency_set_of_T_wrt_attributes_of_node_using_T ", node)
+        #print("frequency_set_of_T_wrt_attributes_of_node_using_T ", node)
         attributes = get_dimensions_of_node(node)
         try:
             attributes.remove("null")
@@ -209,7 +208,7 @@ def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
 
 
 def frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i):
-    print("frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set ", node)
+    #print("frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set ", node)
     i_str = str(i)
     dims_and_indexes_s_node = get_dims_and_indexes_of_node(node)
 
@@ -261,7 +260,7 @@ def table_is_k_anonymous_wrt_attributes_of_node(frequency_set):
     for count in frequency_set: #per ogni count
         if type(count) == tuple: #se count è una tupla
             count = count[0] #prendo il primo elemento
-        if k > count > threshold: #se count è maggiore di threshold e minore di k
+        if k > count > threshold: #if k>count && count>threshold    se sta nel range di treshold e k allora non è k-anonimo
             return False
     return True
 
@@ -329,11 +328,10 @@ def basic_incognito_algorithm(priority_queue):
       
         while not queue.empty():
             print("Queue size: ", queue.qsize())
-            upgraded_node = queue.get_nowait()
-           # print("upgraded node ",upgraded_node)
+            upgraded_node = queue.get_nowait()#prendo il nodo con priorità -altezza
             # [1] => pick 'node' in (-height, node),
             node = upgraded_node[1]
-            #print("node: ", node)
+
             print("Processing node: ", node)
             
             if node[0] not in marked_nodes:
@@ -355,7 +353,6 @@ def basic_incognito_algorithm(priority_queue):
 
 
 def graph_generation(Si, i):
-    print("Graph generation for " + str(i) + " quasi-identifiers", end="")
     i_here = i+1
     i_str = str(i)
     ipp_str = str(i+1)
@@ -393,15 +390,12 @@ def graph_generation(Si, i):
 
     i_here_str = str(i_here)
 
-   # print(f"Creating table C{ipp_str}: CREATE TABLE IF NOT EXISTS C{ipp_str} ({', '.join(column_infos)})")
+    #creo la tabella Ci+1 con le stesse colonne di Ci e aggiungo le nuove colonne dim e index
     cursor.execute("CREATE TABLE IF NOT EXISTS C" + ipp_str + " (" + ', '.join(column_infos) + ")")
-
-   # print(f"Altering table C{ipp_str} to add columns: ALTER TABLE C{ipp_str} ADD COLUMN dim{i_here_str} TEXT")
     cursor.execute("ALTER TABLE C" + ipp_str + " ADD COLUMN dim" + i_here_str + " TEXT")
-
-   # print(f"Altering table C{ipp_str} to add columns: ALTER TABLE C{ipp_str} ADD COLUMN index{i_here_str} INT")
     cursor.execute("ALTER TABLE C" + ipp_str + " ADD COLUMN index" + i_here_str + " INT")
 
+    #setto a null le colonne dim e index
     cursor.execute(
         "UPDATE C" + ipp_str + " SET dim" + i_here_str + " = 'null', index" + i_here_str + "= 'null' WHERE index" + i_here_str + " is null"
     )
@@ -410,7 +404,8 @@ def graph_generation(Si, i):
     select_str_except = ""
     where_str = ""
 
-    for j in range(2, i_here):
+    #join phase
+    for j in range(2, i_here):  #i_here escluso
         j_str = str(j)
         if j == i_here - 1:
             select_str += ", p.dim" + j_str + ", p.index" + j_str + ", q.dim" + j_str + ", q.index" + j_str
@@ -487,7 +482,10 @@ def graph_generation(Si, i):
 
 
 def projection_of_attributes_of_Sn_onto_T_and_dimension_tables(Sn):
-        # Trova il nodo con l'altezza minima
+    if not Sn:
+        print("Unable to anonymize the data: Sn is empty.")
+        return
+    # Trova il nodo con l'altezza minima
     lowest_node = min(Sn, key=lambda t: get_height_of_node(t))
     height = get_height_of_node(lowest_node)
 
@@ -560,8 +558,11 @@ def projection_of_attributes_of_Sn_onto_T_and_dimension_tables(Sn):
     # Esecuzione della query
     cursor.execute(query)
 
+
+
     print("Writing k-anonymous table to anonymous_table.csv", end="")
-    with open("anonymous_table.csv", "w") as anonymous_table:
+    with open("../datasets/anonymous_table_k_"+str(k)+".csv", "w") as anonymous_table:
+        anonymous_table.writelines(','.join(attributes_name) + "\n")
         for row in cursor.fetchall():
             anonymous_table.writelines(','.join(str(x) for x in row) + "\n")
         anonymous_table.close()
@@ -628,6 +629,7 @@ if __name__ == "__main__":
     result = cursor.fetchall()
     print(result)"""
 
+    #control if k is valid
     k = args.k
     cursor.execute("SELECT * FROM " + str(dataset_name))
     if k > len(list(cursor)) or k <= 0:

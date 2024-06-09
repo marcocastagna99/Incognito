@@ -1,0 +1,27 @@
+Descriptive statistics:
+               age
+count  1000.000000
+mean     52.959000
+std      25.829101
+min      18.000000
+25%      28.000000
+50%      51.000000
+75%      75.250000
+max     100.000000
+
+Value counts for gender:
+gender
+M    522
+F    478
+Name: count, dtype: int64
+
+Value counts for race:
+race
+White              708
+Black               94
+Asian               93
+Hispanic            53
+Native_american     30
+Other               22
+Name: count, dtype: int64
+
