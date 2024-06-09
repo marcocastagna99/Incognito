@@ -65,16 +65,16 @@ def plot_with_k(k, treshold):
         plt.plot(QIs, execution_times, label=f'k={k}')
         plt.xlabel("Number of qi")
         plt.ylabel("Time [s]")
-        plt.title(f"Execution Time with k={k}")
+        plt.title(f"Execution Time")
         plt.grid()
         plt.legend() 
         plt.savefig('results.png')
 
 
 if __name__ == "__main__":
-    dimensionsTable = ['gender.csv', 'race.csv', 'age.csv', 'zipCode.csv','height.csv', 'weight.csv', 'dateandTime.csv']
+    dimensionsTable = ['gender.csv', 'race.csv', 'age.csv','dateandTime.csv', 'zipCode.csv','height.csv', 'weight.csv']
     quis = remove_csv_extension_from_array(dimensionsTable)
-    file_path="../datasets/hospital.csv"
+    file_path="../datasets/hospital.csv" #path of the original table
     
     for i in range(2):
         if i==0:
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
 
             columns = input("Enter the columns to analyze, separated by commas: ").replace(" ", "")
-            os.system(f"python3 analysis.py {file_path} {columns}")
+            os.system(f"python3 analysis.py {file_path} {columns}") #analysis of the original table
 
     
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
         QIs = range(2, int(qisNum)+1)#range of QIs
         plot_with_k(k, int(treshold))
   
-        # Get old and new column names
+        # Get old and new column names, because the anon table columns are different from the original table
         old_columns = columns.split(',')
         new_columns = get_columns_from_csv(file_anon_path)
         column_mapping = map_old_to_new_columns(old_columns, new_columns)
@@ -125,5 +125,6 @@ if __name__ == "__main__":
         mapped_columns_str = ','.join(mapped_columns)
         #print("Mapped columns:", mapped_columns_str)
         
+        #analysis of the anonymized table
         os.system(f"python3 analysis.py {file_anon_path} {mapped_columns_str}")
 

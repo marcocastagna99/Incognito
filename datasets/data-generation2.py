@@ -27,7 +27,7 @@ def generate_data(num_tuples):
         data_datetime = fake.date_time_between_dates(datetime_start=start_datetime, datetime_end=end_datetime)
 
         #age
-        prob_more_than_50 = 0.7  # Puoi regolare la probabilità secondo le tue preferenze
+        prob_more_than_50 = 0.7
         if random.random() < prob_more_than_50:
             age = random.randint(31, 100)
         else:

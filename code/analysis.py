@@ -60,7 +60,7 @@ def text_field_statistics(df, text_columns, file_name):
             plt.title(f'Value Counts for {col}')
             plt.xlabel('Frequency')
             plt.ylabel(col)
-            plt.savefig(f"../datasets/stats/{file_name}_{col}.png")
+            plt.savefig(f"../datasets/stats/png/{file_name}_{col}.png")
 
 def visualize_data(df, numeric_columns, file_name):
     """
@@ -72,7 +72,7 @@ def visualize_data(df, numeric_columns, file_name):
         plt.title(f'Distribution of {col}')
         plt.xlabel(col)
         plt.ylabel('Frequency')
-        plt.savefig(f"../datasets/stats/{file_name}_{col}.png")
+        plt.savefig(f"../datasets/stats/png/{file_name}_{col}.png")
 
 def strip_dim(string):
     """
