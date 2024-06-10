@@ -45,7 +45,7 @@ When you run `test.py`, the program will prompt you for the following inputs:
 1. **Number of tuples**: The number of tuples to generate for the dataset.
 2. **Number of QIs**: The number of quasi-identifiers (QIs) to use in the test (up to 7, optimal value found to be 5).
 3. **QIs to analyze**: Select which QIs you want to analyze.
-4. **Threshold value t** The desired value for the outlier threshold
+
 
 After providing the required inputs, the program will automatically generate the data and create the initial dataset `../datasets/hospital.csv`. It will also call `dimensionsTable_to_csv.py` to generate the necessary dimension tables.
 
@@ -82,7 +82,6 @@ When you run the program, it will also launch `analysis.py` to perform statistic
 
 ### Final User Input
 Lastly, the program will ask for:
-- **k_value**: The desired value for k-anonymity.
 - **t_value**: The desired value for the outlier threshold. Rows with a certain combination of quasi-identifiers will be deleted if they are present in an amount lower than `t_value`. To disable this feature, set `t_value` to 0.
 
 ## Execution Example
