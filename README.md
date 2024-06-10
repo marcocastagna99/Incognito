@@ -83,6 +83,8 @@ When you run the program, it will also launch `analysis.py` to perform statistic
 ### Final User Input
 Lastly, the program will ask for:
 - **t_value**: The desired value for the outlier threshold. Rows with a certain combination of quasi-identifiers will be deleted if they are present in an amount lower than `t_value`. To disable this feature, set `t_value` to 0.
+- The value for `k` will be set automatically by the program, first with `k=2` and then with `k=10`.
+
 
 ## Execution Example
 Launch the program with the following command:
