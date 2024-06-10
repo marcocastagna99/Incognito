@@ -61,12 +61,15 @@ The CSV files for dimension tables must be formatted as follows:
 
 #### Example: AGE CSV
 ```
-0,1
-18,20
-19,20
-20,20
-21,20
-22,20
+0,1,2
+18,20,20
+19,20,20
+20,20,20
+21,20,20
+22,20,20
+23,20,20
+24,20,20
+25,25,20
 ...
 ```
 
