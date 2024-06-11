@@ -198,7 +198,7 @@ def frequency_set_of_T_wrt_attributes_of_node_using_T(node):
     
     cursor.execute(query)
     results = cursor.fetchall()
-    print("freq",results)
+    #print("freq",results)
     
     return [count[0] for count in results]
 
@@ -235,7 +235,7 @@ def frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node,
 
     cursor.execute(f"SELECT SUM(count) FROM TempTable GROUP BY {', '.join(attributes)}")
     results = cursor.fetchall()
-    print("freq",results)
+    # print("freq",results)
     
     cursor.execute("DROP TABLE TempTable")
     
@@ -324,10 +324,10 @@ def basic_incognito_algorithm(priority_queue):
                 else:
                     frequency_set = frequency_set_of_T_wrt_attributes_of_node_using_parent_s_frequency_set(node, i)
                 if table_is_k_anonymous_wrt_attributes_of_node(frequency_set):
-                    print("anonymus")
+                    print("anonymous")
                     mark_all_direct_generalizations_of_node(marked_nodes, node, i)
                 else:
-                    print("not anonymus")
+                    print("not anonymous")
                     Si.remove(node)
                     insert_direct_generalization_of_node_in_queue(node, queue, i, Si)
                     cursor.execute("DELETE FROM C" + str(i) + " WHERE ID = " + str(node[0]))
@@ -423,7 +423,7 @@ def graph_generation(Si, i):
 
 def projection_of_attributes_of_Sn_onto_T_and_dimension_tables(Sn):
     if not Sn:
-        print("ERROR Outiers probably do not allow k-anonymization , unable to anonymize the data: Sn is empty.")
+        print("ERROR: Lattice creation failed due to outlier issues. Unable to anonymize the data because Sn is empty.")
         return
     # Trova il nodo con l'altezza minima
     lowest_node = min(Sn, key=lambda t: get_height_of_node(t))
@@ -526,8 +526,8 @@ if __name__ == "__main__":
     #creo un database SQLite in memoria
     connection = sqlite3.connect(":memory:") #connessione ad un database volatile
     cursor = connection.cursor()  # cursor utilizzato per le operazioni nel db
-    cursor.execute("PRAGMA synchronous = ON") #ottimizzazzione, però se il sistema dovesse saltare perderei i dati
-    cursor.execute("PRAGMA journal_mode = ON")#non uso journaling, +prestazioni, -durata di vita delle transazioni
+    cursor.execute("PRAGMA synchronous = ON") # con OFF +ottimizzazzione, però se il sistema dovesse saltare perderei i dati
+    cursor.execute("PRAGMA journal_mode = ON")# con OFF non uso journaling, +prestazioni, -durata di vita delle transazioni
     cursor.execute("PRAGMA locking_mode = EXCLUSIVE") #blocco esclusivo
 
     # all attributes of the table
