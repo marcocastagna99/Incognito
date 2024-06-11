@@ -1,13 +1,18 @@
 Descriptive statistics:
-               age
-count  1000.000000
-mean     52.655000
-std      25.538759
-min      20.000000
-25%      25.000000
-50%      50.000000
-75%      75.000000
-max     100.000000
+               age       height
+count  1000.000000  1000.000000
+mean     49.050000   160.100000
+std      24.988436    11.511843
+min      20.000000   140.000000
+25%      20.000000   160.000000
+50%      50.000000   160.000000
+75%      70.000000   160.000000
+max      90.000000   180.000000
+
+Value counts for dateandTime:
+dateandTime
+*    1000
+Name: count, dtype: int64
 
 Value counts for gender:
 gender
@@ -17,10 +22,5 @@ Name: count, dtype: int64
 Value counts for race:
 race
 Human    1000
-Name: count, dtype: int64
-
-Value counts for dateandTime:
-dateandTime
-*    1000
 Name: count, dtype: int64
 

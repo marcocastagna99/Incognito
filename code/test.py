@@ -72,10 +72,10 @@ def plot_with_k(k, treshold):
 
 
 if __name__ == "__main__":
-    dimensionsTable = ['gender.csv', 'race.csv', 'age.csv','dateandTime.csv', 'zipCode.csv','height.csv', 'weight.csv']
+    dimensionsTable = ['dateandTime.csv','age.csv','height.csv','gender.csv' ,'race.csv','weight.csv','zipCode.csv' ]
     quis = remove_csv_extension_from_array(dimensionsTable)
     file_path="../datasets/hospital.csv" #path of the original table
-    
+
     for i in range(2):
         if i==0:
             k=2
@@ -91,8 +91,8 @@ if __name__ == "__main__":
                 print("Invalid input. Please enter a numeric value positive >", k)
                 tuples = input()
 
-            os.system(f"python3 ../datasets/data-generation2.py --num_tuples {tuples}")#generate the data
-            os.system("python3 ../datasets/dimensionsTable_to_csv.py")#create the csv files (this case only for date_time.csv)
+            os.system(f"python3 data-generation2.py --num_tuples {tuples}")#generate the data
+            os.system("python3 dimensionsTable_to_csv.py")#create the csv files (this case only for date_time.csv)
             print("QIs: ",quis)
             print("how many qis do you want to use? (maximum 7)")
 

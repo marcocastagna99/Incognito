@@ -36,31 +36,27 @@ def descriptive_statistics(df, numeric_columns, file=None):
     Compute descriptive statistics for the specified numeric columns.
     """
     stats = df[numeric_columns].describe()
-    #print("Descriptive statistics:\n", stats)
     if file:
-        with open(file, 'a') as f:
-            f.write("Descriptive statistics:\n")
-            f.write(str(stats) + "\n\n")
+        file.write("Descriptive statistics:\n")
+        file.write(str(stats) + "\n\n")
 
-def text_field_statistics(df, text_columns, file_name):
+def text_field_statistics(df, text_columns, file, file_name):
     """
     Compute frequency counts for the specified text columns and visualize them.
     """
-    output_file = f"../datasets/stats/{file_name}_stats.txt"
-    with open(output_file, 'a') as f:
-        for col in text_columns:
-            counts = df[col].value_counts()
-            stats_text = f"Value counts for {col}:\n{counts}\n"
-            #print(stats_text)
-            f.write(stats_text + "\n")
-            
-            # Visualize the frequency counts
-            plt.figure(figsize=(10, 6))
-            sns.countplot(y=col, data=df, order=counts.index)
-            plt.title(f'Value Counts for {col}')
-            plt.xlabel('Frequency')
-            plt.ylabel(col)
-            plt.savefig(f"../datasets/stats/png/{file_name}_{col}.png")
+    for col in text_columns:
+        counts = df[col].value_counts()
+        stats_text = f"Value counts for {col}:\n{counts}\n"
+        file.write(stats_text + "\n")
+        
+        # Visualize the frequency counts
+        plt.figure(figsize=(10, 6))
+        sns.countplot(y=col, data=df, order=counts.index)
+        plt.title(f'Value Counts for {col}')
+        plt.xlabel('Frequency')
+        plt.ylabel(col)
+        plt.savefig(f"../datasets/stats/png/{file_name}_{col}.png")
+        plt.close()  # Close the plot to free memory
 
 def visualize_data(df, numeric_columns, file_name):
     """
@@ -73,6 +69,7 @@ def visualize_data(df, numeric_columns, file_name):
         plt.xlabel(col)
         plt.ylabel('Frequency')
         plt.savefig(f"../datasets/stats/png/{file_name}_{col}.png")
+        plt.close()  # Close the plot to free memory
 
 def strip_dim(string):
     """
@@ -107,14 +104,16 @@ def main():
     numeric_columns = [col for col in columns if pd.api.types.is_numeric_dtype(df[col])]
     text_columns = [col for col in columns if not pd.api.types.is_numeric_dtype(df[col])]
 
-    # Perform statistical analysis and visualization
-    output_file = f"../datasets/stats/{file_name}_stats.txt"
-    if numeric_columns:
-        descriptive_statistics(df, numeric_columns, output_file)
-        visualize_data(df, numeric_columns, file_name)
-    
-    if text_columns:
-        text_field_statistics(df, text_columns, file_name)
-
+    # Open the output file once for all functions
+    output_file_path = f"../datasets/stats/{file_name}_stats.txt"
+    with open(output_file_path, 'w') as output_file:
+        # Perform statistical analysis and visualization
+        if numeric_columns:
+            descriptive_statistics(df, numeric_columns, output_file)
+            visualize_data(df, numeric_columns, file_name)
+        
+        if text_columns:
+            text_field_statistics(df, text_columns, output_file, file_name)
+    print("analysis saved successfully! in: ", output_file_path)
 if __name__ == "__main__":
     main()
